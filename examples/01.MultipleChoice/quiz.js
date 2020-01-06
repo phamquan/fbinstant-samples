@@ -121,6 +121,7 @@ function checkAnswer(answer){
         // end the quiz and show the score
         clearInterval(TIMER);
         scoreRender();
+
     }
 }
 
@@ -150,6 +151,8 @@ function scoreRender(){
     
     scoreDiv.innerHTML = "<img src="+ img +">";
     scoreDiv.innerHTML += "<p>"+ scorePerCent +"%</p>";
+
+    submitScore(scorePerCent);
 }
 
 

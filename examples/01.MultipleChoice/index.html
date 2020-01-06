@@ -6,16 +6,108 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
       <!-- build:js -->
   <script src="https://connect.facebook.net/en_US/fbinstant.6.2.js"></script>
   <!-- endbuild -->
+  <script src="js/display.js"></script>
   <script type="text/javascript">
 
+    const display = window.Display;
+
+    const LEADERBOARD_NAME = "TopScore";
+
+    let leaderboard = null;
+    let contextID = null;
+
     window.onload = function() {
+        $('#info-section, #leaderboard-section').hide();
+
       FBInstant.initializeAsync()
       .then(FBInstant.startGameAsync)
       .then(onStart);
     };
+
+    function onStart() {
+      $('#info-section, #leaderboard-section').show();
+      contextID = FBInstant.context.getID();
+      fetchLeaderboard();
+    }
+
+    function getLeaderboardName() {
+      // If the leaderboard is contextual, i.e. it is set as contextual in the
+      // leaderboard configuration and this session occurs in a message thread,
+      // this specific context should append ".<Context ID>" to
+      // the name of the leaderboard
+      if (contextID != null) {
+        return LEADERBOARD_NAME + '.' + contextID;
+      }
+      return LEADERBOARD_NAME;
+    }
+
+    function fetchLeaderboard() {
+      // If the leaderboard name is not found in your
+      // app's configuration, the promise will reject
+      FBInstant.getLeaderboardAsync(getLeaderboardName())
+        .then(function(result) {
+          display.clear();
+          leaderboard = result;
+          updateLeaderboardInformation();
+          return leaderboard.getEntriesAsync();
+        })
+        .then(updateLeaderboardEntries)
+        .catch(function(error) {
+          display.error('Leaderboard is not found in app configuration');
+        });
+    }
+
+    // Print out basic leaderboard information to the webpage
+    function updateLeaderboardInformation() {
+      let name = leaderboard.getName();
+      let contextID = leaderboard.getContextID();
+      leaderboard.getEntryCountAsync()
+        .then(function(count) {
+          $('#lb-name').html(name);
+          $('#lb-context-id').html(contextID);
+          $('#lb-entry-count').html(count);
+        });
+    }
+
+    // Print out entries of the leaderboard to the webpage
+    function updateLeaderboardEntries(entries) {
+      let list = $('#leaderboard');
+      list.empty();
+      entries.forEach(function(entry) {
+        list.append($(`
+          <tr>
+            <td>#${entry.getRank()}</td>
+            <td>
+              <img
+                width="50"
+                height="50"
+                class="profile_picture"
+                src="${entry.getPlayer().getPhoto()}"
+              />
+            </td>
+            <td>${entry.getFormattedScore()}</td>
+          </tr>
+        `));
+      });
+    }
+
+    function submitScore(newScore) {
+    //   var score = parseInt($('#score').val(), 10);
+
+      leaderboard.setScoreAsync(newScore)
+        .then(function(entry) {
+          display.clear();
+          return leaderboard.getEntriesAsync();
+        })
+        .then(updateLeaderboardEntries)
+        .catch(function(error) {
+          display.error('Error sending score: ' + error.message);
+        });
+    }
   </script>
     <div id="container">
         <div id="start">Start Quiz!</div>
@@ -37,5 +129,25 @@
         <div id="scoreContainer" style="display: none"></div>
     </div>
     <script src="quiz.js"></script>
+
+    <section id="leaderboard-section">
+        <h3>Leaderboard</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Player Icon</th>
+                <th>Score</th>
+            </tr>
+            </thead>
+            <tbody id="leaderboard"></tbody>
+        </table>
+    </section>
+
+    <section>
+        <p id="display-message" class="output"></p>
+        <p id="display-success" class="success"></p>
+        <p id="display-error" class="error"></p>
+      </section>
 </body>
 </html>
